@@ -42,13 +42,6 @@ public:
 
     ~allocator_sorted_list() override;
 
-public:
-
-    void set_fit_mode(
-        allocator_with_fit_mode::fit_mode mode) override;
-
-    std::vector<allocator_test_utils::block_info> get_blocks_info() const noexcept override;
-
 private:
     
     [[nodiscard]] void *do_allocate_sm(
@@ -58,6 +51,11 @@ private:
         void *at) override;
 
     bool do_is_equal(const std::pmr::memory_resource&) const noexcept override;
+
+    inline void set_fit_mode(
+        allocator_with_fit_mode::fit_mode mode) override;
+
+    std::vector<allocator_test_utils::block_info> get_blocks_info() const noexcept override;
 
 private:
 
@@ -133,9 +131,6 @@ private:
 
     sorted_iterator begin() const noexcept;
     sorted_iterator end() const noexcept;
-
-private:
-    void init(size_t space_size, std::pmr::memory_resource *parent_allocator, allocator_with_fit_mode::fit_mode mode);
 };
 
 #endif //MATH_PRACTICE_AND_OPERATING_SYSTEMS_ALLOCATOR_ALLOCATOR_SORTED_LIST_H

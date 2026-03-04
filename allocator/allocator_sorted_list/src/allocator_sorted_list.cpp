@@ -52,9 +52,7 @@ inline std::mutex* get_mutex(void* trusted_memory)
     return reinterpret_cast<std::mutex*>(reinterpret_cast<char*>(trusted_memory) + align_up(sizeof(allocator_header)));
 }
 
-} // anonymous namespace
-
-void allocator_sorted_list::init(size_t space_size, std::pmr::memory_resource *parent_allocator, allocator_with_fit_mode::fit_mode mode)
+void* perform_init(size_t space_size, std::pmr::memory_resource *parent_allocator, allocator_with_fit_mode::fit_mode mode)
 {
     size_t header_space = get_allocator_header_total_size();
     size_t block_hdr_size = get_block_header_size();
@@ -64,28 +62,33 @@ void allocator_sorted_list::init(size_t space_size, std::pmr::memory_resource *p
 
     size_t total_needed = header_space + space_size;
 
+    void* trusted_memory = nullptr;
     if (parent_allocator)
     {
-        _trusted_memory = parent_allocator->allocate(total_needed);
+        trusted_memory = parent_allocator->allocate(total_needed);
     }
     else
     {
-        _trusted_memory = ::operator new(total_needed);
+        trusted_memory = ::operator new(total_needed);
     }
 
-    auto header = new (_trusted_memory) allocator_header;
+    auto header = new (trusted_memory) allocator_header;
     header->parent_allocator = parent_allocator;
     header->mode = mode;
     header->total_size = total_needed;
-    header->mutex_ptr = new (get_mutex(_trusted_memory)) std::mutex;
+    header->mutex_ptr = new (get_mutex(trusted_memory)) std::mutex;
 
-    void* first_block_ptr = reinterpret_cast<char*>(_trusted_memory) + header_space;
+    void* first_block_ptr = reinterpret_cast<char*>(trusted_memory) + header_space;
     header->first_block = first_block_ptr;
 
     auto first_block = new (first_block_ptr) block_header;
     first_block->next_block = nullptr;
     first_block->block_size = space_size;
+
+    return trusted_memory;
 }
+
+} // anonymous namespace
 
 allocator_sorted_list::~allocator_sorted_list()
 {
@@ -114,7 +117,7 @@ allocator_sorted_list::allocator_sorted_list(
         std::pmr::memory_resource *parent_allocator,
         allocator_with_fit_mode::fit_mode allocate_fit_mode)
 {
-    init(space_size, parent_allocator, allocate_fit_mode);
+    _trusted_memory = perform_init(space_size, parent_allocator, allocate_fit_mode);
 }
 
 allocator_sorted_list::allocator_sorted_list(
@@ -147,7 +150,7 @@ allocator_sorted_list::allocator_sorted_list(const allocator_sorted_list &other)
     auto other_header = get_header(other._trusted_memory);
     size_t space_size = other_header->total_size - get_allocator_header_total_size();
 
-    init(space_size, other_header->parent_allocator, other_header->mode);
+    _trusted_memory = perform_init(space_size, other_header->parent_allocator, other_header->mode);
 }
 
 allocator_sorted_list &allocator_sorted_list::operator=(const allocator_sorted_list &other)
@@ -309,7 +312,7 @@ bool allocator_sorted_list::do_is_equal(const std::pmr::memory_resource &other) 
     return p && p->_trusted_memory == _trusted_memory;
 }
 
-void allocator_sorted_list::set_fit_mode(
+inline void allocator_sorted_list::set_fit_mode(
     allocator_with_fit_mode::fit_mode mode)
 {
     if (_trusted_memory == nullptr) return;
