@@ -92,10 +92,13 @@ TEST(positiveTests, test53)
                     {
                         case 0:
                             the_same_subject->set_fit_mode(allocator_with_fit_mode::fit_mode::first_fit);
+                            break;
                         case 1:
                             the_same_subject->set_fit_mode(allocator_with_fit_mode::fit_mode::the_best_fit);
+                            break;
                         case 2:
                             the_same_subject->set_fit_mode(allocator_with_fit_mode::fit_mode::the_worst_fit);
+                            break;
                     }
 
                     allocated_blocks.push_front(allocator->allocate(sizeof(void *) * (rand() % 251 + 50)));

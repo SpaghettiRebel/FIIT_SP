@@ -76,6 +76,12 @@ private:
         bool _occupied;
         void* _trusted_memory;
 
+    private:
+        boundary_iterator(void* trusted, void* occupied_ptr, bool occupied)
+            : _trusted_memory(trusted), _occupied_ptr(occupied_ptr), _occupied(occupied) {}
+        
+        friend class allocator_boundary_tags;
+
     public:
 
         using iterator_category = std::bidirectional_iterator_tag;

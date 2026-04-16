@@ -27,6 +27,11 @@ namespace __detail
 
         return ones_counter <= 1 ? index : index + 1;
     }
+
+    constexpr size_t align_up(size_t size, size_t alignment) noexcept
+    {
+        return (size + alignment - 1) & ~(alignment - 1);
+    }
 }
 
 class allocator_buddies_system final:
@@ -37,6 +42,7 @@ class allocator_buddies_system final:
 
 private:
 
+    void *get_buddy(void *block) const noexcept;
 
     struct block_metadata
     {
@@ -46,17 +52,26 @@ private:
 
     void *_trusted_memory;
 
-    /**
-     * TODO: You must improve it for alignment support
-     */
+    static constexpr const size_t alignment = alignof(std::max_align_t);
+    
+    static constexpr const size_t allocator_metadata_size = __detail::align_up(
+        sizeof(std::pmr::memory_resource*) +
+        sizeof(allocator_dbg_helper*) + 
+        sizeof(fit_mode) + 
+        sizeof(unsigned char) + 
+        sizeof(std::mutex), 
+        alignment);
 
-    static constexpr const size_t allocator_metadata_size = sizeof(allocator_dbg_helper*) + sizeof(fit_mode) + sizeof(unsigned char) + sizeof(std::mutex);
+    static constexpr const size_t occupied_block_metadata_size = __detail::align_up(
+        sizeof(block_metadata) + sizeof(void*), 
+        alignment);
 
-    static constexpr const size_t occupied_block_metadata_size = sizeof(block_metadata) + sizeof(void*);
-
-    static constexpr const size_t free_block_metadata_size = sizeof(block_metadata);
+    static constexpr const size_t free_block_metadata_size = __detail::align_up(
+        sizeof(block_metadata), 
+        alignment);
 
     static constexpr const size_t min_k = __detail::nearest_greater_k_of_2(occupied_block_metadata_size);
+    static const size_t max_k = 64;
 
 public:
 
@@ -81,25 +96,21 @@ public:
 
 private:
     
-    [[nodiscard]] void *do_allocate_sm(
-        size_t size) override;
-    
-    void do_deallocate_sm(
-        void *at) override;
-
+    [[nodiscard]] void *do_allocate_sm(size_t size) override;
+    void do_deallocate_sm(void *at) override;
     bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
-
-    inline void set_fit_mode(
-        allocator_with_fit_mode::fit_mode mode) override;
-
-
+    inline void set_fit_mode(allocator_with_fit_mode::fit_mode mode) override;
     std::vector<allocator_test_utils::block_info> get_blocks_info() const noexcept override;
 
 private:
 
     std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
-
-    /** TODO: Highly recommended for helper functions to return references */
+    inline std::pmr::memory_resource *&get_parent_allocator() const noexcept;
+    inline allocator_dbg_helper *&get_dbg_helper() const noexcept;
+    inline fit_mode &get_current_fit_mode() const noexcept;
+    inline unsigned char &get_total_size_k() const noexcept;
+    inline std::mutex &get_mutex() const noexcept;
+    static inline void** get_trusted_ptr_address(void* block_start) noexcept;
 
     class buddy_iterator
     {

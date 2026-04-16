@@ -4,7 +4,7 @@
 
 TEST(allocatorRBTPositiveTests, test1)
 {
-	std::unique_ptr<smart_mem_resource> alloc(new allocator_red_black_tree(3000, nullptr, allocator_with_fit_mode::fit_mode::first_fit));
+	std::unique_ptr<smart_mem_resource> alloc(new allocator_red_black_tree(3300, nullptr, allocator_with_fit_mode::fit_mode::first_fit));
 
 	auto first_block = reinterpret_cast<int *>(alloc->allocate(sizeof(int) * 250));
 
