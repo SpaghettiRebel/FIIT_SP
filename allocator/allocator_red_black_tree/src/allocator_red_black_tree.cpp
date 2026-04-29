@@ -60,7 +60,6 @@ void*& allocator_red_black_tree::get_block_right(void* block) const noexcept {
     return *reinterpret_cast<void**>(static_cast<std::byte*>(block) + RIGHT_OFFSET);
 }
 
-// --- FIXED SEARCHES + SIZE LOGIC ---
 
 size_t allocator_red_black_tree::calculate_block_size(void* block) const noexcept {
     const auto* start = static_cast<const std::byte*>(block);
@@ -72,7 +71,6 @@ size_t allocator_red_black_tree::calculate_block_size(void* block) const noexcep
         ? static_cast<const std::byte*>(get_block_next(block))
         : end;
 
-    // ✅ ВСЕГДА occupied metadata
     return static_cast<size_t>(next - start - occupied_block_metadata_size);
 }
 
@@ -114,23 +112,6 @@ allocator_red_black_tree::operator=(allocator_red_black_tree&& other) noexcept {
     if (this != &other) {
         this->~allocator_red_black_tree();
         _trusted_memory = std::exchange(other._trusted_memory, nullptr);
-    }
-    return *this;
-}
-
-allocator_red_black_tree::allocator_red_black_tree(const allocator_red_black_tree& other) {
-    if (!other._trusted_memory) {
-        _trusted_memory = nullptr;
-        return;
-    }
-    throw std::logic_error("copy construction not supported");
-}
-
-allocator_red_black_tree&
-allocator_red_black_tree::operator=(const allocator_red_black_tree& other) {
-    if (this != &other) {
-        this->~allocator_red_black_tree();
-        new (this) allocator_red_black_tree(other);
     }
     return *this;
 }
@@ -229,7 +210,7 @@ void allocator_red_black_tree::do_deallocate_sm(void* at) {
     std::lock_guard lock{get_stored_mutex()};
 
     if (!at) {
-        throw std::logic_error("allocator_red_black_tree: null deallocation");
+        throw std::logic_error("null deallocation");
     }
 
     void* block = static_cast<std::byte*>(at) - occupied_block_metadata_size;
@@ -239,12 +220,12 @@ void allocator_red_black_tree::do_deallocate_sm(void* at) {
     auto* block_ptr = static_cast<std::byte*>(block);
 
     if (block_ptr < trusted_start || block_ptr >= trusted_end) {
-        throw std::logic_error("allocator_red_black_tree: block out of bounds");
+        throw std::logic_error("block out of bounds");
     }
 
     auto& d = get_block_data(block);
     if (!d.occupied || get_block_parent(block) != _trusted_memory) {
-        throw std::logic_error("allocator_red_black_tree: invalid deallocation");
+        throw std::logic_error("invalid deallocation");
     }
 
     d.occupied = 0;
@@ -319,24 +300,20 @@ void* allocator_red_black_tree::search_best_fit(size_t size) const noexcept {
 
 void* allocator_red_black_tree::search_worst_fit(size_t size) const noexcept {
     void* cur = get_root_block();
-    void* worst = nullptr;
-    size_t worst_cap = 0;
-
-    while (cur) {
-        size_t cap = get_allocatable_capacity(cur);
-
-        if (cap >= size) {
-            if (cap > worst_cap) {
-                worst = cur;
-                worst_cap = cap;
-            }
-            cur = get_block_right(cur); // ищем больше
-        } else {
-            cur = get_block_right(cur);
-        }
+    
+    if (!cur) {
+        return nullptr;
     }
 
-    return worst;
+    while (get_block_right(cur)) {
+        cur = get_block_right(cur);
+    }
+
+    if (get_allocatable_capacity(cur) >= size) {
+        return cur;
+    }
+
+    return nullptr;
 }
 
 
@@ -635,9 +612,11 @@ std::vector<allocator_test_utils::block_info>
 allocator_red_black_tree::get_blocks_info_inner() const {
     std::vector<allocator_test_utils::block_info> result;
     result.reserve(64);
+
     for (auto it = begin(), end_it = end(); it != end_it; ++it) {
         result.push_back({it.size(), it.occupied()});
     }
+
     return result;
 }
 
@@ -684,8 +663,11 @@ allocator_red_black_tree::rb_iterator::operator++(int) {
 }
 
 size_t allocator_red_black_tree::rb_iterator::size() const noexcept {
-    if (!_block_ptr || !_trusted) return 0;
+    if (!_block_ptr || !_trusted)
+        return 0;
+    
     auto* self = static_cast<const allocator_red_black_tree*>(_trusted);
+    
     return self->calculate_block_size(_block_ptr);
 }
 
@@ -694,7 +676,10 @@ void* allocator_red_black_tree::rb_iterator::operator*() const noexcept {
 }
 
 bool allocator_red_black_tree::rb_iterator::occupied() const noexcept {
-    if (!_block_ptr || !_trusted) return false;
+    if (!_block_ptr || !_trusted) 
+        return false;
+    
     auto* self = static_cast<const allocator_red_black_tree*>(_trusted);
+    
     return self->get_block_data(_block_ptr).occupied != 0;
 }

@@ -16,12 +16,34 @@ bool allocator_global_heap::do_is_equal(const std::pmr::memory_resource &other) 
 
 allocator_global_heap::allocator_global_heap() = default;
 
+<<<<<<< HEAD
 allocator_global_heap::~allocator_global_heap() = default;
+=======
+allocator_global_heap::~allocator_global_heap()
+{
+}
+>>>>>>> 684b0430cb2189e41edbd38fc12ddfe28f6bc9cc
 
 allocator_global_heap::allocator_global_heap(const allocator_global_heap &other) {}
 
+<<<<<<< HEAD
 allocator_global_heap::allocator_global_heap(allocator_global_heap &&other) noexcept {}
+=======
+allocator_global_heap &allocator_global_heap::operator=(const allocator_global_heap &other)
+{
+}
+>>>>>>> 684b0430cb2189e41edbd38fc12ddfe28f6bc9cc
 
 allocator_global_heap &allocator_global_heap::operator=(const allocator_global_heap &other) { return *this; }
 
+<<<<<<< HEAD
 allocator_global_heap &allocator_global_heap::operator=(allocator_global_heap &&other) noexcept { return *this; }
+=======
+allocator_global_heap::allocator_global_heap(allocator_global_heap &&other) noexcept
+{
+}
+
+allocator_global_heap &allocator_global_heap::operator=(allocator_global_heap &&other) noexcept
+{
+}
+>>>>>>> 684b0430cb2189e41edbd38fc12ddfe28f6bc9cc

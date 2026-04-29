@@ -105,9 +105,9 @@ private:
 public:
     ~allocator_red_black_tree() override;
 
-    allocator_red_black_tree(const allocator_red_black_tree& other);
-    allocator_red_black_tree& operator=(const allocator_red_black_tree& other);
-    allocator_red_black_tree(allocator_red_black_tree&& other) noexcept;
+    allocator_red_black_tree(const allocator_red_black_tree& other) = delete;
+    allocator_red_black_tree& operator=(const allocator_red_black_tree& other) = delete;
+    allocator_red_black_tree(allocator_red_black_tree&& other) noexcept; 
     allocator_red_black_tree& operator=(allocator_red_black_tree&& other) noexcept;
 
     explicit allocator_red_black_tree(
